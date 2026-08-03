@@ -50,10 +50,20 @@ This repo currently has `V1__baseline.sql` as a **file**, tested to actually bui
 - `R__*.sql` (repeatable migrations) re-run automatically whenever their file content changes — the right home for things like the sync-trigger functions going forward, instead of versioned one-shot files.
 - Reference/lookup data the app depends on to function (roles, provinces) belongs in a versioned migration, not a manually-run seed script — see `seed/README.md`.
 
-## Known issues carried over (full detail: the docs site's Phase 0 register)
+## Known issues from the Phase 0 register — status
 
-- `DB-2` — `form.response.task_log_id` has no FK — now a hard dependency for the chatbot integration, not just a standalone weak point.
-- `DB-3` — no UNIQUE constraints anywhere (e.g. `auth.user_account.username`).
-- `DB-5` — no secondary indexes / no GiST on geometry.
+Full detail on each: the docs site's Phase 0 register. Status here:
 
-These become `V2`, `V3`, etc. — not edits to `V1__baseline.sql`.
+| ID | Fix | Status |
+|---|---|---|
+| DB-1 | Restore `other.sql`'s trigger functions | **Already resolved by `V1__baseline.sql` itself** — it was pulled straight from the live database, not reconstructed from the truncated file, so the trigger functions came through correctly as a side effect. No separate migration needed. |
+| DB-2 | FK `form.response.task_log_id` → `form.task` | `V2__db2_response_task_fk.sql` |
+| DB-3 | UNIQUE + NOT NULL on identity columns | `V3__db3_unique_identity_columns.sql` — `username`, `role_name`, `permission_key`. Deliberately **not** `password_hash` (see the migration's own comment — LINE-only accounts need it nullable). |
+| DB-4 | `geo_id` FKs (×3) | `V4__db4_geo_id_fks.sql` — `agriculture.farm`, `processing.hub`, `processing.processing_station`. |
+| DB-5 | Hot-path indexes + GiST | `V5__db5_hot_path_indexes.sql` — every FK column across the schema that had no supporting index (62 of them), plus a GiST index on `storage.geo.geom`. |
+| DB-6 | Adopt a migration tool | **This repo *is* that fix** — no separate migration; Flyway itself is the resolution. |
+| DB-7 | Consolidate grades onto `grade_constant` | `V6__db7_consolidate_grades.sql` — `ref.cocoa_bean_grade_constant` was empty and unreferenced; dropped. `collection.harvest_grade_detail.grade_code` now FKs to `ref.grade_constant`. |
+| DB-8 | Index + `created_at` on `storage.file` | `V7__db8_storage_file_hygiene.sql` |
+| DB-9 | Hygiene batch | `V8__db9_hygiene_batch.sql` — `agriculture.farm_activity(_fertilizer/_chemical)`'s varchar PK/FK converted to uuid (all three tables were empty, safe); `CHECK` constraint on `storage.geo.source_type`. A couple of items (`form.response.status`, `storage.file.status`) were deliberately left alone — see the migration's own note on why. |
+
+Every migration above was checked against the **live data** before being written (no orphaned FKs, no existing NULLs/duplicates that would make the constraint fail, no rows in the tables whose column types changed) — none of them should fail to apply. **None of them have been run against the real database yet** — same deliberate-pause policy as the baseline itself.
