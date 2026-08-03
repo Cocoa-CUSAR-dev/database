@@ -1,0 +1,43 @@
+name: Verify migrations
+
+on:
+  pull_request:
+    paths:
+      - 'migrations/**'
+  push:
+    branches: [main]
+    paths:
+      - 'migrations/**'
+
+jobs:
+  migrate-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: cocoa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Runs the FULL migration chain (V1, V2, ... ) against a brand-new database,
+      # not just whatever changed in this PR. This is what actually prevents a repeat
+      # of the old "other.sql truncated, can't rebuild from scratch" problem (DB-1).
+      - name: Run Flyway migrate against a fresh database
+        run: |
+          docker run --rm --network host \
+            -v "${{ github.workspace }}/migrations:/flyway/sql" \
+            flyway/flyway:10-alpine \
+            -url=jdbc:postgresql://localhost:5432/cocoa_test \
+            -user=test -password=test \
+            migrate
