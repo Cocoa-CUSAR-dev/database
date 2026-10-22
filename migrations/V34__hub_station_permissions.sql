@@ -9,6 +9,7 @@
 --   processor     -> create:station:own  (register my processing station)
 --                    read:station:own    (my stations and their batches)
 --   researcher    -> read:hub:all, read:station:all
+--   admin         -> read:hub:all, read:station:all
 --
 -- Idempotent, same pattern as V10/V23/V32/V33: only inserts keys and grants
 -- that are missing.
@@ -35,7 +36,9 @@ FROM (VALUES
     ('processor', 'create:station:own'),
     ('processor', 'read:station:own'),
     ('researcher', 'read:hub:all'),
-    ('researcher', 'read:station:all')
+    ('researcher', 'read:station:all'),
+    ('admin', 'read:hub:all'),
+    ('admin', 'read:station:all')
 ) AS g(role_name, key)
 JOIN auth.role r ON r.role_name = g.role_name
 JOIN auth.permission p ON p.permission_key = g.key
