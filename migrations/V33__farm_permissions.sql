@@ -8,6 +8,7 @@
 --                 read:farm:own    (your farms and their plots)
 --                 update:farm:own  (your farm's photo)
 --   researcher -> read:farm:all    (every farm and plot, e.g. the web map)
+--   admin      -> read:farm:all
 --
 -- Idempotent, same pattern as V10/V23/V32: only inserts keys and grants
 -- that are missing.
@@ -30,7 +31,8 @@ FROM (VALUES
     ('farmer', 'create:farm:own'),
     ('farmer', 'read:farm:own'),
     ('farmer', 'update:farm:own'),
-    ('researcher', 'read:farm:all')
+    ('researcher', 'read:farm:all'),
+    ('admin', 'read:farm:all')
 ) AS g(role_name, key)
 JOIN auth.role r ON r.role_name = g.role_name
 JOIN auth.permission p ON p.permission_key = g.key
